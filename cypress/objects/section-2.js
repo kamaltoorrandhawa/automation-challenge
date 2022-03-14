@@ -4,6 +4,7 @@ const Section2 = {
    */
   literals: {
     SAMPLE_LITERAL: 'This is a sample literal. You can safely delete it.',
+    root: 'http://localhost:8889',
   },
 
   /**
@@ -11,6 +12,9 @@ const Section2 = {
    */
   elements: {
     sampleElement: '[data-test=sample-element-to-be-safely-deleted]',
+    networkCallButton: '[data-test="network-call-button"]',
+    newTabButton: '[data-test="new-tab-button"]',
+    fileDownloadButton: '[data-test="file-download-button"]',
   },
 
   /**
@@ -24,15 +28,42 @@ const Section2 = {
      *
      * This is only used as an example and can be safely deleted.
      */
-    assertSampleApiResponse () {
-      cy.server()
-      cy.wait('/endpoint').as('endpoint')
+    navigate () {
+      cy.visit('section-2.html')
+    },
 
-      cy.get(Section2.elements.sampleElement).click()
-      // ... An api call to "/endpoint" performed on the app.
-      cy.wait('@endpoint').should((request) => {
-        expect(request.status).to.eq(200)
+    clickNetworkCallButtonAndAssertNetworkCall () {
+      cy.intercept('GET', 'http://localhost:8889/todos/1').as('networkCall')
+      cy.get(Section2.elements.networkCallButton).click()
+      cy.wait('@networkCall')
+      .its('response')
+        .should('deep.include', { statusCode: 200 })
+        .and('have.property', 'body')
+     .then((body) => {
+       expect(body).property('id').to.be.eq(1)
+       expect(body).property('title').to.be.eq('Abnormally long network call!')
+     })
+
+      cy.on('window:alert', (txt) => {
+        expect(txt).to.contains('Abnormally long network call!')
       })
+    },
+
+    clickNewTabButton () {
+      cy.get('a').invoke('removeAttr', 'target').find(Section2.elements.newTabButton).click()
+    },
+
+    assertNewTab () {
+      cy.title().should('eq', 'AlayaCare - Automation Challenge')
+    },
+
+    clickFileDownloadButton () {
+      cy.get(Section2.elements.fileDownloadButton).click()
+    },
+
+    assertFileDownload () {
+      cy.downloadFile('http://localhost:8080/assets/img/javascript-logo.png', 'downloads', 'javascript-logo.png')
+      cy.readFile('downloads/javascript-logo.png', { timeout: 15000 }).should((buffer) => expect(buffer.length).to.be.gt(5000))
     },
   },
 }
